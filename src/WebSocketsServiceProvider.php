@@ -2,8 +2,8 @@
 
 namespace BeyondCode\LaravelWebSockets;
 
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Route;
+
+use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Support\ServiceProvider;
 use BeyondCode\LaravelWebSockets\Server\Router;
 use BeyondCode\LaravelWebSockets\Apps\AppProvider;
@@ -22,12 +22,12 @@ class WebSocketsServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->publishes([
-            __DIR__.'/../config/websockets.php' => base_path('config/websockets.php'),
+            __DIR__ . '/../config/websockets.php' => base_path('config/websockets.php'),
         ], 'config');
 
-        if (! class_exists('CreateWebSocketsStatisticsEntries')) {
+        if (!class_exists('CreateWebSocketsStatisticsEntries')) {
             $this->publishes([
-                __DIR__.'/../database/migrations/create_websockets_statistics_entries_table.php.stub' => database_path('migrations/'.date('Y_m_d_His', time()).'_create_websockets_statistics_entries_table.php'),
+                __DIR__ . '/../database/migrations/create_websockets_statistics_entries_table.php.stub' => database_path('migrations/' . date('Y_m_d_His', time()) . '_create_websockets_statistics_entries_table.php'),
             ], 'migrations');
         }
 
@@ -35,17 +35,18 @@ class WebSocketsServiceProvider extends ServiceProvider
             ->registerRoutes()
             ->registerDashboardGate();
 
-        $this->loadViewsFrom(__DIR__.'/../resources/views/', 'websockets');
+        $this->loadViewsFrom(__DIR__ . '/../resources/views/', 'websockets');
 
         $this->commands([
             Console\StartWebSocketServer::class,
             Console\CleanStatistics::class,
         ]);
+
     }
 
     public function register()
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/websockets.php', 'websockets');
+        $this->mergeConfigFrom(__DIR__ . '/../config/websockets.php', 'websockets');
 
         $this->app->singleton('websockets.router', function () {
             return new Router();
@@ -63,10 +64,12 @@ class WebSocketsServiceProvider extends ServiceProvider
 
     protected function registerRoutes()
     {
+
+        /*
         Route::prefix(config('websockets.path'))->group(function () {
             Route::middleware(config('websockets.middleware', [AuthorizeDashboard::class]))->group(function () {
                 Route::get('/', ShowDashboard::class);
-                Route::get('/api/{appId}/statistics', [DashboardApiController::class,  'getStatistics']);
+                Route::get('/api/{appId}/statistics', [DashboardApiController::class, 'getStatistics']);
                 Route::post('auth', AuthenticateDashboard::class);
                 Route::post('event', SendMessage::class);
             });
@@ -75,13 +78,30 @@ class WebSocketsServiceProvider extends ServiceProvider
                 Route::post('statistics', [WebSocketStatisticsEntriesController::class, 'store']);
             });
         });
+        */
+
+        app('router')->group([
+            'prefix' => config('websockets.path'),
+            'middleware' => AuthorizeDashboard::class
+        ], function () {
+            app('router')->get('/', ShowDashboard::class);
+            app('router')->get('/api/{appId}/statistics', DashboardApiController::class . '@getStatistics');
+            app('router')->post('auth', AuthenticateDashboard::class);
+            app('router')->post('event', SendMessage::class);
+            app('router')->group(['middleware' => AuthorizeStatistics::class], function () {
+                app('router')->post('statistics', [
+                    'as' => 'statistics',
+                    'uses' => WebSocketStatisticsEntriesController::class . '@store']);
+            });
+
+        });
 
         return $this;
     }
 
     protected function registerDashboardGate()
     {
-        Gate::define('viewWebSocketsDashboard', function ($user = null) {
+        app(Gate::class)->define('viewWebSocketsDashboard', function ($user = null) {
             return app()->environment('local');
         });
 

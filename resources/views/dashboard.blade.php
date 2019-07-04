@@ -117,14 +117,14 @@
                     wsPort: this.port,
                     wssPort: this.port,
                     disableStats: true,
-                    authEndpoint: '/{{ request()->path() }}/auth',
+                    authEndpoint: '/laravel-websockets/auth',
                     auth: {
                         headers: {
-                            'X-CSRF-Token': "{{ csrf_token() }}",
+                            'X-CSRF-Token': this.app.key,
                             'X-App-ID': this.app.id
                         }
                     },
-                    enabledTransports: ['ws', 'flash']
+                    enabledTransports: ['ws', 'wss', 'flash']
                 });
 
                 this.pusher.connection.bind('state_change', states => {
@@ -152,7 +152,7 @@
             },
 
             loadChart() {
-                $.getJSON('/{{ request()->path() }}/api/'+this.app.id+'/statistics', (data) => {
+                $.getJSON('/laravel-websockets/api/'+this.app.id+'/statistics', (data) => {
 
                     let chartData = [
                         {
@@ -236,8 +236,8 @@
             },
 
             sendEvent() {
-                $.post('/{{ request()->path() }}/event', {
-                    _token: '{{ csrf_token() }}',
+                $.post('/laravel-websockets/event', {
+                    _token: this.app.key,
                     key: this.app.key,
                     secret: this.app.secret,
                     appId: this.app.id,

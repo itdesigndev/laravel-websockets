@@ -79,7 +79,8 @@ class HttpStatisticsLogger implements StatisticsLogger
             $this
                 ->browser
                 ->post(
-                    action([WebSocketStatisticsEntriesController::class, 'store']),
+                    //action([WebSocketStatisticsEntriesController::class, 'store']),
+                    app('url')->route('statistics'),
                     ['Content-Type' => 'application/json'],
                     stream_for(json_encode($postData))
                 );
